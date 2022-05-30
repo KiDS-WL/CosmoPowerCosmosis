@@ -8,7 +8,7 @@ pip install cosmopower
 
 For a detailed description of COSMOPOWER see https://arxiv.org/pdf/2106.03846.pdf, where the pretrained models can also be found here https://github.com/alessiospuriomancini/cosmopower. 
 
-In order to run cosmopower inside cosmosis we modified the KIDS-1000 cosebins pipeline.ini file, which is also provided here.
+In order to run cosmopower inside cosmosis we modified the KiDS-1000 cosebins pipeline.ini file, which is also provided here.
 
 If you want to train the emulator again using the power spectra genreated from cosmosis we added in the folder train_model 4 python modules. Remember that you need to create the two subfolders putputs and plots. If you want to train the emulator on different camb spectra like mead2020_feedback than we added 4 python modules in train_model/camb_spectra. The structure of the modules are the following:
 
