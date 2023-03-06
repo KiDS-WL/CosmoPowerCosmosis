@@ -17,7 +17,7 @@ We used 450 000 spectra calculated with mead2020 feedback.
 For the emulation, we used two methods. 
 log10 P(k)
 log10 P(k) - log10 P_reference(k)
-The second method outperforms the first one in terms of accuracy. And both methods are better than the boosting, which was recommended in COSMOPOWER. For the second method however, the reference power spectrum which is also provided needs to be loaded in. New cosmosis interfaces will be provided soon.
+The second method outperforms the first one in terms of accuracy. And both methods are better than the boosting, which was recommended in COSMOPOWER. For the second method however, the reference power spectrum which is also provided needs to be loaded in. New cosmosis interfaces will be provided soon. The new emulator can be found in train_emulator_camb_new. 
 
 If you want to train the emulator again using the power spectra generated from cosmosis we added in the folder train_model 4 python modules. Remember that you need to create the two subfolders outputs and plots. If you want to train the emulator on different camb spectra like mead2020_feedback, we added 4 python modules in train_model/camb_spectra. The structure of the modules are the following:
 
