@@ -112,8 +112,8 @@ def execute(block, config):
     nk = len(k)
     
     params_lin,params_nonlin = get_cosmopower_inputs(block, z, nz)
-    P_lin = config['lin_matter_power_cp'].ten_to_predictions_np(params_lin).T
-    P_nl = config['nonlin_matter_power_cp'].ten_to_predictions_np(params_nonlin).T
+    P_lin = config['lin_matter_power_cp'].predictions_np(params_lin).T
+    P_nl = config['nonlin_matter_power_cp'].predictions_np(params_nonlin).T
 
     #subtract the reference spectra 
     for i in range(P_lin.shape[1]):
