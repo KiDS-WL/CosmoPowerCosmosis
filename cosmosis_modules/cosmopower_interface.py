@@ -112,9 +112,7 @@ def execute(block, config):
     P_lin = config['lin_matter_power_cp'].ten_to_predictions_np(params_lin)
     P_nl = P_lin*config['nl_matter_power_boost_cp'].ten_to_predictions_np(params_boost)
 
-    print(P_lin.shape)
-    print(P_nl.shape)
-    
+
     if(config['use_specific_k_modes']):
         k_new = np.logspace(np.log10(config['kmin']), np.log10(config['kmax']),num=config['nk'])
 
@@ -130,11 +128,6 @@ def execute(block, config):
 
         k = k_new
 
-    np.save('outputs/non_linear_spectrum',P_nl * h0**3)
-    np.save('outputs/kh',k / h0)
-    np.save('outputs/z', z)
-
-    print(k.shape,z.shape,P_lin.shape)
 
     # Save matter power as a grid
     block.put_grid("matter_power_lin", "z", z,"k_h", k / h0, "p_k", P_lin * h0**3)
