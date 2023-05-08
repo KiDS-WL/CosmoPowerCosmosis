@@ -103,13 +103,6 @@ def get_cosmopower_inputs(block, z, nz):
         print('either mnu!=0.06eV, or omega_k!=0.0, or w!=-1, or wa!=0, which were used for the training')
         exit()
               
-
-    print('mnu: ',block[cosmo, 'mnu'])
-    print('S8: ',block[cosmo, 'S_8_input'])
-    print('n_s: ',block[cosmo, 'n_s'])
-    print('h: ',block[cosmo, 'h0'])
-    print('ombh2: ',block[cosmo, 'ombh2'])
-    print('omch2: ',block[cosmo, 'omch2'])
     params_lin = {
         'S8':  [block[cosmo, 'S_8_input']]*nz,
         'n_s':       [block[cosmo, 'n_s']]*nz,
@@ -119,7 +112,6 @@ def get_cosmopower_inputs(block, z, nz):
         'z':         z
     }
 
-    print('halo Model:' ,block.get_double(names.halo_model_parameters, 'logT_AGN'))
     params_nonlin = {
         'S8':  [block[cosmo, 'S_8_input']]*nz,
         'n_s':           [block[cosmo, 'n_s']]*nz,
@@ -143,8 +135,6 @@ def execute(block, config):
     block[distances, 'z'] = z
     block[distances, 'nz'] = nz
 
-    print('nz',nz)
-
     #use k modes for cosmopower
     k = config['lin_matter_power_cp'].modes
     nk = len(k)
@@ -152,8 +142,8 @@ def execute(block, config):
     params_lin,params_nonlin = get_cosmopower_inputs(block, z, nz)
 
     As=config['As_emulator'].predictions_np(params_nonlin)[0][0]
-    #block[cosmo, "A_s"] = As
-    print('As:',As,1e-10*np.exp(As))
+    block[cosmo, "A_s"] = As
+    #print('As:',As,1e-10*np.exp(As))
     if(As>5.0):
         print('ln10^{10}A_s is greater than 5.0 and were impossible to calculate',As)
         exit()
@@ -167,9 +157,6 @@ def execute(block, config):
         P_nl[i] = P_nl[i]+config['reference_nonlinear_spectra']
     P_lin = 10**(P_lin)
     P_nl = 10**(P_nl)
-    
-    print(P_lin.shape)
-    print(P_nl.shape)
     
     if(config['use_specific_k_modes']):
         k_new = np.logspace(np.log10(config['kmin']), np.log10(config['kmax']),num=config['nk'])
@@ -186,11 +173,6 @@ def execute(block, config):
 
         k = k_new
 
-    np.save('outputs/non_linear_spectrum',P_nl * h0**3)
-    np.save('outputs/kh',k / h0)
-    np.save('outputs/z', z)
-
-    print(k.shape,z.shape,P_lin.shape)
 
     # Save matter power as a grid
     block.put_grid("matter_power_lin", "z", z,"k_h", k / h0, "p_k", P_lin * h0**3)
