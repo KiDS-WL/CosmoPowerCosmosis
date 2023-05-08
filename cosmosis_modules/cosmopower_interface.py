@@ -69,6 +69,11 @@ def get_cosmopower_inputs(block, z, nz):
     # Get parameters from block and give them the
     # names and form that class expects
 
+    if((block[cosmo, 'mnu']!=0.0)or(block[cosmo, 'omega_k']!=0.0)or(block[cosmo, 'w']!=-1.0)or(block[cosmo, 'wa']!=0.0)):
+        print('either mnu!=0.06eV, or omega_k!=0.0, or w!=-1, or wa!=0, which were used for the training')
+        exit()
+
+
     params_lin = {
         'ln10^{10}A_s':  [np.log(block[cosmo, 'A_s']*10**10)]*nz,
         'n_s':       [block[cosmo, 'n_s']]*nz,
@@ -128,9 +133,12 @@ def execute(block, config):
 
         k = k_new
 
+    np.save('outputs/non_linear_spectrum',P_nl * h0**3)
+    np.save('outputs/kh',k / h0)
+    np.save('outputs/z', z)
 
     # Save matter power as a grid
-    block.put_grid("matter_power_lin", "z", z,"k_h", k / h0, "p_k", P_lin * h0**3)
+    block.put_grid("matter_power_lin", "z", z, "k_h", k / h0, "p_k", P_lin * h0**3)
     block.put_grid("matter_power_nl", "z", z, "k_h", k / h0, "p_k" ,P_nl * h0**3)
 
     return 0
