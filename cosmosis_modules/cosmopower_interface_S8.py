@@ -96,8 +96,8 @@ def get_cosmopower_inputs(block, z, nz):
     if((z[nz-1]>6.0)or(z[0]<0)):
         print('z values are outside training range',z)
         exit()
-    if((block.get_double(names.halo_model_parameters, 'logT_AGN')>8.3)or(block.get_double(names.halo_model_parameters, 'logT_AGN')<7.3)):
-        print('logT_AGN value outside training range',block.get_double(names.halo_model_parameters, 'logT_AGN'))
+    if((block.get_double(names.halo_model_parameters, 'log_T_AGN')>8.3)or(block.get_double(names.halo_model_parameters, 'log_T_AGN')<7.3)):
+        print('log_T_AGN value outside training range',block.get_double(names.halo_model_parameters, 'log_T_AGN'))
         exit()
     if((block[cosmo, 'mnu']!=0.06)or(block[cosmo, 'omega_k']!=0.0)or(block[cosmo, 'w']!=-1.0)or(block[cosmo, 'wa']!=0.0)):
         print('either mnu!=0.06eV, or omega_k!=0.0, or w!=-1, or wa!=0, which were used for the training')
@@ -119,7 +119,7 @@ def get_cosmopower_inputs(block, z, nz):
         'obh2':       [block[cosmo, 'ombh2']]*nz,
         'omch2':     [block[cosmo, 'omch2']]*nz,
         'z':             z,
-        'log_T_AGN':     [block.get_double(names.halo_model_parameters, 'logT_AGN')]*nz
+        'log_T_AGN':     [block.get_double(names.halo_model_parameters, 'log_T_AGN')]*nz
     }
 
     return params_lin, params_nonlin
