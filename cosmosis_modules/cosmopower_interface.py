@@ -70,8 +70,7 @@ def get_cosmopower_inputs(block, z, nz):
     # names and form that class expects
 
     if((block[cosmo, 'mnu']!=0.06)or(block[cosmo, 'omega_k']!=0.0)or(block[cosmo, 'w']!=-1.0)or(block[cosmo, 'wa']!=0.0)):
-        print('either mnu!=0.06eV, or omega_k!=0.0, or w!=-1, or wa!=0, which were used for the training')
-        exit()
+        raise Exception('either mnu!=0.06eV, or omega_k!=0.0, or w!=-1, or wa!=0, which were used for the training')
 
 
     params_lin = {

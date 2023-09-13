@@ -79,29 +79,21 @@ def get_cosmopower_inputs(block, z, nz):
     # names and form that class expects
 
     if((block[cosmo, 'S_8_input']>1.0)or(block[cosmo, 'S_8_input']<0.5)):
-        print('S8 value outside training range',block[cosmo, 'S_8_input'])
-        exit()
+        raise Exception(f"S8 value outside training range {block[cosmo, 'S_8_input']}")
     if((block[cosmo, 'n_s']>1.1)or(block[cosmo, 'n_s']<0.84)):
-        print('n_s value outside training range',block[cosmo, 'n_s'])
-        exit()
+        raise Exception(f"n_s value outside training range {block[cosmo, 'n_s']}")
     if((block[cosmo, 'h0']>0.82)or(block[cosmo, 'h0']<0.64)):
-        print('h0 value outside training range',block[cosmo, 'h0'])
-        exit()
+        raise Exception(f"h0 value outside training range {block[cosmo, 'h0']}")
     if((block[cosmo, 'ombh2']>0.026)or(block[cosmo, 'ombh2']<0.019)):
-        print('ombh2 value outside training range',block[cosmo, 'ombh2'])
-        exit()
+        raise Exception(f"ombh2 value outside training range {block[cosmo, 'ombh2']}")
     if((block[cosmo, 'omch2']>0.255)or(block[cosmo, 'omch2']<0.051)):
-        print('omch2 value outside training range',block[cosmo, 'omch2'])
-        exit()
+        raise Exception(f"omch2 value outside training range {block[cosmo, 'omch2']}")
     if((z[nz-1]>6.0)or(z[0]<0)):
-        print('z values are outside training range',z)
-        exit()
+        raise Exception(f"z values are outside training range {z}")
     if((block.get_double(names.halo_model_parameters, 'log_T_AGN')>8.3)or(block.get_double(names.halo_model_parameters, 'log_T_AGN')<7.3)):
-        print('log_T_AGN value outside training range',block.get_double(names.halo_model_parameters, 'log_T_AGN'))
-        exit()
+        raise Exception(f"log_T_AGN value outside training range {block.get_double(names.halo_model_parameters, 'log_T_AGN')}")
     if((block[cosmo, 'mnu']!=0.06)or(block[cosmo, 'omega_k']!=0.0)or(block[cosmo, 'w']!=-1.0)or(block[cosmo, 'wa']!=0.0)):
-        print('either mnu!=0.06eV, or omega_k!=0.0, or w!=-1, or wa!=0, which were used for the training')
-        exit()
+        raise Exception('either mnu!=0.06eV, or omega_k!=0.0, or w!=-1, or wa!=0, which were used for the training')
               
     params_lin = {
         'S8':  [block[cosmo, 'S_8_input']]*nz,
@@ -143,10 +135,10 @@ def execute(block, config):
 
     As=config['As_emulator'].predictions_np(params_nonlin)[0][0]
     block[cosmo, "A_s"] = As
-    #print('As:',As,1e-10*np.exp(As))
-    if(As>5.0):
-        print('ln10^{10}A_s is greater than 5.0 and were impossible to calculate',As)
-        exit()
+    # print('As:',As,1e-10*np.exp(As))
+    if(As>6.0):
+        raise Exception(f"ln10^{10}A_s is greater than 5.0 and was outside training range (???) {As}")
+    
 
     P_lin = config['lin_matter_power_cp'].predictions_np(params_lin)
     P_nl = config['nonlin_matter_power_cp'].predictions_np(params_nonlin)
