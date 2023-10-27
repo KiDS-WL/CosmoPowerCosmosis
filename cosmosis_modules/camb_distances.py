@@ -405,7 +405,6 @@ def execute(block, config):
     sigma_sq_cs = CubicSpline(k,k**2*window(k)**2*P_k_lin[0]/(2*np.pi**2))
     sigma8 = np.sqrt(sigma_sq_cs.integrate(k.min(),k.max()))
 
-    print(sigma8)
     
     block[names.cosmological_parameters, "sigma_8"] = sigma8
     block[names.cosmological_parameters, "S_8"] = sigma8*np.sqrt(p.omegam/0.3)
