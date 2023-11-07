@@ -83,7 +83,7 @@ def get_cosmopower_inputs(block, z, nz):
     }
 
 
-    print('halo Model:' ,block.get_double(names.halo_model_parameters, 'A', default=2.32),block.get_double(names.halo_model_parameters, 'eta0', default=0.76))
+    #print('halo Model:' ,block.get_double(names.halo_model_parameters, 'A', default=2.32),block.get_double(names.halo_model_parameters, 'eta0', default=0.76))
     params_boost = {
         'ln10^{10}A_s':  [np.log(block[cosmo, 'A_s']*10**10)]*nz,
         'n_s':           [block[cosmo, 'n_s']]*nz,
