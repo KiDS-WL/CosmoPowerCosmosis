@@ -91,8 +91,8 @@ def get_cosmopower_inputs(block, z, nz):
         'omega_b':       [block[cosmo, 'ombh2']]*nz,
         'omega_cdm':     [block[cosmo, 'omch2']]*nz,
         'z':             z,
-        'c_min':         [block.get_double(names.halo_model_parameters, 'A', default=2.32)]*nz,
-        'eta_0':         [block.get_double(names.halo_model_parameters, 'eta0', default=0.76)]*nz
+        'c_min':         [block.get_double(names.halo_model_parameters, 'A')]*nz,
+        'eta_0':         [block.get_double(names.halo_model_parameters, 'eta')]*nz
     }
 
     return params_lin, params_boost
