@@ -132,10 +132,6 @@ def execute(block, config):
 
         k = k_new
 
-    try: 
-        np.save('outputs/non_linear_spectrum',P_nl * h0**3)
-        np.save('outputs/kh',k / h0)
-        np.save('outputs/z', z)
 
     # Save matter power as a grid
     block.put_grid("matter_power_lin", "z", z, "k_h", k / h0, "p_k", P_lin * h0**3)
