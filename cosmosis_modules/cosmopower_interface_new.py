@@ -157,7 +157,7 @@ def setup(options):
     more_config['nonlinear_params'] = get_optional_params(options, opt, ['halofit_version', 'Min_kh_nonlinear'])
 
     halofit_version = more_config['nonlinear_params'].get('halofit_version')
-    known_halofit_versions = list(camb.nonlinear.halofit_version_names.keys()) + [None]
+    known_halofit_versions = list(camb.nonlinear.halofit_version_names.keys())
     if halofit_version not in known_halofit_versions:
         raise ValueError("halofit_version must be one of : {}.  You put: {}".format(known_halofit_versions, halofit_version))
 
@@ -194,18 +194,17 @@ def setup(options):
     # load pre-trained NN model: maps cosmological parameters to linear log-P(k)
     if config['WantTransfer']:
         more_config['lin_matter_power_cp'] = cp.cosmopower_NN(restore=True, restore_filename=options.get_string(opt, 'lin_matter_power_emulator'))
-        more_config['nonlin_matter_power_cp'] = cp.cosmopower_NN(restore=True, restore_filename=options.get_string(opt, 'nonlin_matter_power_emulator'))
-        if halofit_version in ['mead2020_feedback']:
+        more_config['nonlin_matter_power_cp'] = cp.cosmopower_NN(restore=True, restore_filename=options.get_string(opt, 'nonlin_matter_power_emulator')) if config['NonLinear'] != 'NonLinear_none' else None
+
+        if halofit_version == 'mead2020_feedback':
             more_config['reference_linear_spectra'] = np.log10(np.load(options.get_string(opt, 'reference_linear_spectra'))['features'])
-            more_config['reference_nonlinear_spectra'] = np.log10(np.load(options.get_string(opt, 'reference_nonlinear_spectra'))['features'])
-            if options.has_value(opt, 'As_emulator'):
-                more_config['As_emulator'] = cp.cosmopower_NN(restore=True, restore_filename=options.get_string(opt, 'As_emulator'))
-            else:
-                more_config['As_emulator'] = None
+            more_config['reference_nonlinear_spectra'] = np.log10(np.load(options.get_string(opt, 'reference_nonlinear_spectra'))['features']) if config['NonLinear'] != 'NonLinear_none' else None
+            more_config['As_emulator'] = cp.cosmopower_NN(restore=True, restore_filename=options.get_string(opt, 'As_emulator')) if options.has_value(opt, 'As_emulator') else None
         else:
             more_config['reference_linear_spectra'] = None
             more_config['reference_nonlinear_spectra'] = None
             more_config['As_emulator'] = None
+                            
                             
     # CosmoPower cls
     if config['WantCls']:
@@ -229,125 +228,124 @@ def setup(options):
     return [config, more_config]
 
 
-def get_cosmopower_inputs(block, z, nz, more_config):
-
+def get_cosmopower_inputs(block, z, nz, config, more_config):
     version = more_config['nonlinear_params'].get('halofit_version', '')
-    if ((block[cosmo, 'mnu'] != 0.06) or (block[cosmo, 'omega_k'] != 0.0) or (block[cosmo, 'w'] != -1.0) or (block[cosmo, 'wa'] != 0.0)):
-        raise Exception("either mnu != 0.06eV, or omega_k != 0.0, or w != -1, or wa != 0, which were used for the training")
-    if ((block[cosmo, 'n_s'] > 1.1) or (block[cosmo, 'n_s'] < 0.84)):
-        raise Exception(f"n_s value outside training range {block[cosmo, 'n_s']}")
-    if ((block[cosmo, 'h0'] > 0.82) or (block[cosmo, 'h0'] < 0.64)):
-        raise Exception(f"h0 value outside training range {block[cosmo, 'h0']}")
-    if ((block[cosmo, 'ombh2'] > 0.026) or (block[cosmo, 'ombh2'] < 0.019)):
-        raise Exception(f"ombh2 value outside training range {block[cosmo, 'ombh2']}")
-    if ((block[cosmo, 'omch2'] > 0.255) or (block[cosmo, 'omch2'] < 0.051)):
-        raise Exception(f"omch2 value outside training range {block[cosmo, 'omch2']}")
-    if ((z[nz-1] > 6.0) or (z[0] < 0)):
-        raise Exception(f"z values are outside training range {z}")
-    
-    if version == 'mead2015':
-        if ((block[cosmo, 'A'] > 4) or (block[cosmo, 'A'] < 2)):
-            raise Exception(f"ombh2 value outside training range {block[cosmo, 'ombh2']}")
-        if ((block[cosmo, 'eta'] > 1.0) or (block[cosmo, 'eta'] < 0.5)):
-            raise Exception(f"omch2 value outside training range {block[cosmo, 'omch2']}")
-    
-        if block.has_value(cosmo, 'A_s') and not block.has_value(cosmo, 'S_8_input'):
-            if ((np.log(block[cosmo, 'A_s']*10**10) > 3.91) or (np.log(block[cosmo, 'A_s']*10**10) < 1.61)):
-                raise Exception(f"A_s value outside training range {block[cosmo, 'A_s']}")
-            params_lin = {
-                'ln10^{10}A_s':  [np.log(block[cosmo, 'A_s']*10**10)]*nz,
-                'n_s':       [block[cosmo, 'n_s']]*nz,
-                'h':         [block[cosmo, 'h0']]*nz,
-                'omega_b':   [block[cosmo, 'ombh2']]*nz,
-                'omega_cdm': [block[cosmo, 'omch2']]*nz,
-                'z':         z
-            }
-            params_boost = {
-                'ln10^{10}A_s':  [np.log(block[cosmo, 'A_s']*10**10)]*nz,
-                'n_s':           [block[cosmo, 'n_s']]*nz,
-                'h':             [block[cosmo, 'h0']]*nz,
-                'omega_b':       [block[cosmo, 'ombh2']]*nz,
-                'omega_cdm':     [block[cosmo, 'omch2']]*nz,
-                'z':             z,
-                'c_min':         [block.get_double(names.halo_model_parameters, 'A')]*nz,
-                'eta_0':         [block.get_double(names.halo_model_parameters, 'eta')]*nz
-            }
-            params_nonlin = None
-            
-        if not block.has_value(cosmo, 'A_s') and block.has_value(cosmo, 'S_8_input'):
-            if ((block[cosmo, 'S_8_input'] > 1.0) or (block[cosmo, 'S_8_input'] < 0.5)):
-                raise Exception(f"S8 value outside training range {block[cosmo, 'S_8_input']}")
-            params_lin = {
-                # The linear part also takes c_min and eta_0 as input alyhough they do not have an impact on the powerspectrum
-                'S_8':  [block[cosmo, 'S_8_input']]*nz,
-                'n_s':       [block[cosmo, 'n_s']]*nz,
-                'h':         [block[cosmo, 'h0']]*nz,
-                'omega_b':   [block[cosmo, 'ombh2']]*nz,
-                'omega_cdm': [block[cosmo, 'omch2']]*nz,
-                'z':         z,
-                'c_min':         [block.get_double(names.halo_model_parameters, 'A')]*nz,
-                'eta_0':         [block.get_double(names.halo_model_parameters, 'eta')]*nz
-            }
-            params_boost = {
-                'S_8':  [block[cosmo, 'S_8_input']]*nz,
-                'n_s':           [block[cosmo, 'n_s']]*nz,
-                'h':             [block[cosmo, 'h0']]*nz,
-                'omega_b':       [block[cosmo, 'ombh2']]*nz,
-                'omega_cdm':     [block[cosmo, 'omch2']]*nz,
-                'z':             z,
-                'c_min':         [block.get_double(names.halo_model_parameters, 'A')]*nz,
-                'eta_0':         [block.get_double(names.halo_model_parameters, 'eta')]*nz
-            }
-            params_nonlin = None
 
-    if version == 'mead2020_feedback':
+    def check_range(value, min_val, max_val, name):
+        if value < min_val or value > max_val:
+            raise Exception(f"{name} value outside training range {value}")
+
+    # Check cosmological parameters
+    check_range(block[cosmo, 'mnu'], 0.06, 0.06, "mnu")
+    check_range(block[cosmo, 'omega_k'], 0.0, 0.0, "omega_k")
+    check_range(block[cosmo, 'w'], -1.0, -1.0, "w")
+    check_range(block[cosmo, 'wa'], 0.0, 0.0, "wa")
+    check_range(block[cosmo, 'n_s'], 0.84, 1.1, "n_s")
+    check_range(block[cosmo, 'h0'], 0.64, 0.82, "h0")
+    check_range(block[cosmo, 'ombh2'], 0.019, 0.026, "ombh2")
+    check_range(block[cosmo, 'omch2'], 0.051, 0.255, "omch2")
+    check_range(z[-1], 0, 6.0, "z")
+    check_range(z[0], 0, 6.0,  "z")
+
+    params_lin = params_nonlin = params_boost = None
+
+    if version == 'mead2015':
+        if config['NonLinear'] != 'NonLinear_none':
+            check_range(block[cosmo, 'A'], 2, 4, "A")
+            check_range(block[cosmo, 'eta'], 0.5, 1.0, "eta")
+
+        if block.has_value(cosmo, 'A_s') and not block.has_value(cosmo, 'S_8_input'):
+            check_range(np.log(block[cosmo, 'A_s'] * 10**10), 1.61, 3.91, "A_s")
+            params_lin = {
+                'ln10^{10}A_s': [np.log(block[cosmo, 'A_s'] * 10**10)] * nz,
+                'n_s': [block[cosmo, 'n_s']] * nz,
+                'h': [block[cosmo, 'h0']] * nz,
+                'omega_b': [block[cosmo, 'ombh2']] * nz,
+                'omega_cdm': [block[cosmo, 'omch2']] * nz,
+                'z': z
+            }
+            if config['NonLinear'] != 'NonLinear_none':
+                params_boost = {
+                    'ln10^{10}A_s': [np.log(block[cosmo, 'A_s'] * 10**10)] * nz,
+                    'n_s': [block[cosmo, 'n_s']] * nz,
+                    'h': [block[cosmo, 'h0']] * nz,
+                    'omega_b': [block[cosmo, 'ombh2']] * nz,
+                    'omega_cdm': [block[cosmo, 'omch2']] * nz,
+                    'z': z,
+                    'c_min': [block.get_double(names.halo_model_parameters, 'A')] * nz,
+                    'eta_0': [block.get_double(names.halo_model_parameters, 'eta')] * nz
+                }
+
+        elif not block.has_value(cosmo, 'A_s') and block.has_value(cosmo, 'S_8_input'):
+            check_range(block[cosmo, 'S_8_input'], 0.5, 1.0, "S_8_input")
+            params_lin = {
+                'S_8': [block[cosmo, 'S_8_input']] * nz,
+                'n_s': [block[cosmo, 'n_s']] * nz,
+                'h': [block[cosmo, 'h0']] * nz,
+                'omega_b': [block[cosmo, 'ombh2']] * nz,
+                'omega_cdm': [block[cosmo, 'omch2']] * nz,
+                'z': z,
+                'c_min': [block.get_double(names.halo_model_parameters, 'A')] * nz,
+                'eta_0': [block.get_double(names.halo_model_parameters, 'eta')] * nz
+            }
+            if config['NonLinear'] != 'NonLinear_none':
+                params_boost = {
+                    'S_8': [block[cosmo, 'S_8_input']] * nz,
+                    'n_s': [block[cosmo, 'n_s']] * nz,
+                    'h': [block[cosmo, 'h0']] * nz,
+                    'omega_b': [block[cosmo, 'ombh2']] * nz,
+                    'omega_cdm': [block[cosmo, 'omch2']] * nz,
+                    'z': z,
+                    'c_min': [block.get_double(names.halo_model_parameters, 'A')] * nz,
+                    'eta_0': [block.get_double(names.halo_model_parameters, 'eta')] * nz
+                }
+
+    elif version == 'mead2020_feedback':
         if not block.has_value(cosmo, 'sigma_8') and block.has_value(cosmo, 'S_8_input'):
-            if ((block[cosmo, 'S_8_input'] > 1.0) or (block[cosmo, 'S_8_input'] < 0.5)):
-                raise Exception(f"S8 value outside training range {block[cosmo, 'S_8_input']}")
-            if ((block.get_double(names.halo_model_parameters, 'logT_AGN') > 8.3) or (block.get_double(names.halo_model_parameters, 'logT_AGN') < 7.3)):
-                raise Exception(f"logT_AGN value outside training range {block.get_double(names.halo_model_parameters, 'logT_AGN')}")
+            check_range(block[cosmo, 'S_8_input'], 0.5, 1.0, "S_8_input")
+            if config['NonLinear'] != 'NonLinear_none':
+                check_range(block.get_double(names.halo_model_parameters, 'logT_AGN'), 7.3, 8.3, "logT_AGN")
             params_lin = {
-                'S8':  [block[cosmo, 'S_8_input']]*nz,
-                'n_s':       [block[cosmo, 'n_s']]*nz,
-                'h':         [block[cosmo, 'h0']]*nz,
-                'obh2':   [block[cosmo, 'ombh2']]*nz,
-                'omch2': [block[cosmo, 'omch2']]*nz,
-                'z':         z
+                'S8': [block[cosmo, 'S_8_input']] * nz,
+                'n_s': [block[cosmo, 'n_s']] * nz,
+                'h': [block[cosmo, 'h0']] * nz,
+                'obh2': [block[cosmo, 'ombh2']] * nz,
+                'omch2': [block[cosmo, 'omch2']] * nz,
+                'z': z
             }
-            params_nonlin = {
-                'S8':  [block[cosmo, 'S_8_input']]*nz,
-                'n_s':           [block[cosmo, 'n_s']]*nz,
-                'h':             [block[cosmo, 'h0']]*nz,
-                'obh2':       [block[cosmo, 'ombh2']]*nz,
-                'omch2':     [block[cosmo, 'omch2']]*nz,
-                'z':             z,
-                'log_T_AGN':     [block.get_double(names.halo_model_parameters, 'logT_AGN')]*nz
-            }
-            params_boost = None
-            
-        if block.has_value(cosmo, 'sigma_8') and not block.has_value(cosmo, 'S_8_input'):
-            if ((block[cosmo, 'sigma_8'] > 1.01) or (block[cosmo, 'sigma_8'] < 0.39)):
-                raise Exception(f"sigma_8 value outside training range {block[cosmo, 'sigma_8']}")
-            if ((block.get_double(names.halo_model_parameters, 'logT_AGN') > 9.36) or (block.get_double(names.halo_model_parameters, 'logT_AGN') < 6.5)):
-                raise Exception(f"logT_AGN value outside training range {block.get_double(names.halo_model_parameters, 'logT_AGN')}")
+            if config['NonLinear'] != 'NonLinear_none':
+                params_nonlin = {
+                    'S8': [block[cosmo, 'S_8_input']] * nz,
+                    'n_s': [block[cosmo, 'n_s']] * nz,
+                    'h': [block[cosmo, 'h0']] * nz,
+                    'obh2': [block[cosmo, 'ombh2']] * nz,
+                    'omch2': [block[cosmo, 'omch2']] * nz,
+                    'z': z,
+                    'log_T_AGN': [block.get_double(names.halo_model_parameters, 'logT_AGN')] * nz
+                }
+
+        elif block.has_value(cosmo, 'sigma_8') and not block.has_value(cosmo, 'S_8_input'):
+            check_range(block[cosmo, 'sigma_8'], 0.39, 1.01, "sigma_8")
+            if config['NonLinear'] != 'NonLinear_none':
+                check_range(block.get_double(names.halo_model_parameters, 'logT_AGN'), 6.5, 9.36, "logT_AGN")
             params_lin = {
-                'sigma8':  [block[cosmo, 'sigma_8']]*nz,
-                'n_s':       [block[cosmo, 'n_s']]*nz,
-                'h':         [block[cosmo, 'h0']]*nz,
-                'obh2':   [block[cosmo, 'ombh2']]*nz,
-                'omch2': [block[cosmo, 'omch2']]*nz,
-                'z':         z
+                'sigma8': [block[cosmo, 'sigma_8']] * nz,
+                'n_s': [block[cosmo, 'n_s']] * nz,
+                'h': [block[cosmo, 'h0']] * nz,
+                'obh2': [block[cosmo, 'ombh2']] * nz,
+                'omch2': [block[cosmo, 'omch2']] * nz,
+                'z': z
             }
-            params_nonlin = {
-                'sigma8':  [block[cosmo, 'sigma_8']]*nz,
-                'n_s':           [block[cosmo, 'n_s']]*nz,
-                'h':             [block[cosmo, 'h0']]*nz,
-                'obh2':       [block[cosmo, 'ombh2']]*nz,
-                'omch2':     [block[cosmo, 'omch2']]*nz,
-                'z':             z,
-                'log_T_AGN':     [block.get_double(names.halo_model_parameters, 'logT_AGN')]*nz
-            }
-            params_boost = None
+            if config['NonLinear'] != 'NonLinear_none':
+                params_nonlin = {
+                    'sigma8': [block[cosmo, 'sigma_8']] * nz,
+                    'n_s': [block[cosmo, 'n_s']] * nz,
+                    'h': [block[cosmo, 'h0']] * nz,
+                    'obh2': [block[cosmo, 'ombh2']] * nz,
+                    'omch2': [block[cosmo, 'omch2']] * nz,
+                    'z': z,
+                    'log_T_AGN': [block.get_double(names.halo_model_parameters, 'logT_AGN')] * nz
+                }
 
     return params_lin, params_nonlin, params_boost
 
@@ -484,21 +482,6 @@ def extract_nonlinear_params(block, config, more_config):
         **hmcode_params
     )
 
-# We may reinstate these later depending on support in camb itself
-# def extract_accuracy_params(block, config, more_config):
-#     accuracy = camb.model.AccuracyParams(**more_config["accuracy_params"])
-#     return accuracy
-
-# def extract_transfer_params(block, config, more_config):
-#     PK_num_redshifts = more_config['nz']
-#     PK_redshifts = np.linspace(more_config['zmin'], more_config['zmax'], PK_num_redshifts)[::-1]
-#     transfer = camb.model.TransferParams(
-#         PK_num_redshifts=PK_num_redshifts,
-#         PK_redshifts=PK_redshifts,
-#         **more_config["transfer_params"]
-#     )
-#     return transfer
-
 
 def extract_camb_params(block, config, more_config):
     want_perturbations = more_config['mode'] not in [MODE_BG, MODE_THERM]
@@ -518,24 +501,10 @@ def extract_camb_params(block, config, more_config):
     # if want_perturbations:
     init_power = extract_initial_power_params(block, config, more_config)
     nonlinear = extract_nonlinear_params(block, config, more_config)
-    # else:
-    #     init_power = None
-    #     nonlinear = None
-
     # if want_thermal:
     recomb = extract_recombination_params(block, config, more_config)
     reion = extract_reionization_params(block, config, more_config)
-    # else:
-    #     recomb = None
-    #     reion = None
-
     dark_energy = extract_dark_energy_params(block, config, more_config)
-
-
-    # Currently the camb.model.*Params classes default to 0 for attributes (https://github.com/cmbant/CAMB/issues/50),
-    # so we're not using them.
-    #accuracy = extract_accuracy_params(block, config, more_config)
-    #transfer = extract_transfer_params(block, config, more_config)
 
     # Get optional parameters from datablock.
     cosmology_params = get_optional_params(block, cosmo, 
@@ -697,7 +666,8 @@ def window(k_mode):
     R = 8 # in units Mpc/h which is correct since k is in h/Mpc
     return 3*(np.sin(k_mode*R)-k_mode*R*np.cos(k_mode*R))/(k_mode*R)**3
 
-def save_matter_power(r, block, more_config):
+
+def save_matter_power(r, block, config, more_config):
     p = r.Params
     # Grids in k, z on which to save matter power.
     # There are two kmax values - the max one calculated directly,
@@ -708,70 +678,76 @@ def save_matter_power(r, block, more_config):
     nz = len(z)
 
     h0 = block[cosmo, 'h0']
-    #use k modes for cosmopower
+    # Use k modes for cosmopower
     k = more_config['lin_matter_power_cp'].modes
     nk = len(k)
-    
+
+    params_lin, params_nonlin, params_boost = get_cosmopower_inputs(block, z, nz, config, more_config)
+
     if more_config['reference_linear_spectra'] is None:
-        params_lin, params_nonlin, params_boost = get_cosmopower_inputs(block, z, nz, more_config)
         P_lin = more_config['lin_matter_power_cp'].ten_to_predictions_np(params_lin)
-        if params_boost is not None:
-            P_nl = P_lin * more_config['nonlin_matter_power_cp'].ten_to_predictions_np(params_boost)
-        if params_nonlin is not None:
-            P_nl = more_config['nonlin_matter_power_cp'].ten_to_predictions_np(params_nonlin)
+        if config['NonLinear'] != 'NonLinear_none':
+            P_nl = (P_lin * more_config['nonlin_matter_power_cp'].ten_to_predictions_np(params_boost)
+                    if params_boost is not None else
+                    more_config['nonlin_matter_power_cp'].ten_to_predictions_np(params_nonlin))
     else:
-        params_lin, params_nonlin, params_boost = get_cosmopower_inputs(block, z, nz, more_config)
-        
         if more_config['As_emulator'] is not None:
             block[names.cosmological_parameters, 'A_s'] = more_config['As_emulator'].predictions_np(params_nonlin)[0][0]
-        
+
         P_lin = more_config['lin_matter_power_cp'].predictions_np(params_lin)
-        P_nl = more_config['nonlin_matter_power_cp'].predictions_np(params_nonlin)
-        #subtract the reference spectra
+        if config['NonLinear'] != 'NonLinear_none':
+            P_nl = more_config['nonlin_matter_power_cp'].predictions_np(params_nonlin)
+
+        # Subtract the reference spectra
         for i in range(P_lin.shape[0]):
-            P_lin[i] = P_lin[i] + more_config['reference_linear_spectra']
-            P_nl[i] = P_nl[i] + more_config['reference_nonlinear_spectra']
-        P_lin = 10**(P_lin)
-        P_nl = 10**(P_nl)
-        
+            P_lin[i] += more_config['reference_linear_spectra']
+            if config['NonLinear'] != 'NonLinear_none':
+                P_nl[i] += more_config['reference_nonlinear_spectra']
+
+        P_lin = 10**P_lin
+        if config['NonLinear'] != 'NonLinear_none':
+            P_nl = 10**P_nl
+
     k = k / h0
     P_lin = P_lin * h0**3.0
-    P_nl = P_nl * h0**3.0
-    
-    
-    primordial_PK = p.scalar_power(k*h0)
-    transfer = np.sqrt(P_lin[0,:] / (primordial_PK * k * 2.0 * np.pi**2.0))
+    if config['NonLinear'] != 'NonLinear_none':
+        P_nl = P_nl * h0**3.0
+
+    primordial_PK = p.scalar_power(k * h0)
+    transfer = np.sqrt(P_lin[0, :] / (primordial_PK * k * 2.0 * np.pi**2.0))
     # Assumes we have P_lin at z=0!
-    #matter_power = primordial_PK*transfer**2*k**4 / (k**3/(2*np.pi**2))
+    # matter_power = primordial_PK * transfer**2 * k**4 / (k**3 / (2 * np.pi**2))
     block.put_double_array_1d('matter_power_transfer_func', 'k_h', k)
     block.put_double_array_1d('matter_power_transfer_func', 't_k', transfer)
-    
-    
+
     if more_config['use_specific_k_modes']:
         k_new = np.logspace(np.log10(more_config['kmin']), np.log10(kmax_power), num=more_config['nk'])
-
         P_lin_new = np.zeros(shape=(nz, len(k_new)))
-        P_nl_new = np.zeros(shape=(nz, len(k_new)))
+        if config['NonLinear'] != 'NonLinear_none':
+            P_nl_new = np.zeros(shape=(nz, len(k_new)))
+
         for i in range(nz):
             P_lin_spline = InterpolatedUnivariateSpline(k, P_lin[i], ext=0)
-            P_nl_spline = InterpolatedUnivariateSpline(k, P_nl[i], ext=0)
             P_lin_new[i] = P_lin_spline(k_new)
-            P_nl_new[i] = P_nl_spline(k_new)
+            if config['NonLinear'] != 'NonLinear_none':
+                P_nl_spline = InterpolatedUnivariateSpline(k, P_nl[i], ext=0)
+                P_nl_new[i] = P_nl_spline(k_new)
+
         P_lin = P_lin_new
-        P_nl = P_nl_new
+        if config['NonLinear'] != 'NonLinear_none':
+            P_nl = P_nl_new
         k = k_new
-    
-    
+
     # Save matter power as a grid
     block.put_grid('matter_power_lin', 'z', z, 'k_h', k, 'p_k', P_lin)
-    block.put_grid('matter_power_nl', 'z', z, 'k_h', k, 'p_k' ,P_nl)
-    
+    if config['NonLinear'] != 'NonLinear_none':
+        block.put_grid('matter_power_nl', 'z', z, 'k_h', k, 'p_k', P_nl)
+
     # Get growth rates and sigma_8
-    sigma_sq_cs = CubicSpline(k,k**2*window(k)**2*P_lin[0]/(2*np.pi**2))
-    sigma_8 = np.sqrt(sigma_sq_cs.integrate(k.min(),k.max()))
-    
+    sigma_sq_cs = CubicSpline(k, k**2 * window(k)**2 * P_lin[0] / (2 * np.pi**2))
+    sigma_8 = np.sqrt(sigma_sq_cs.integrate(k.min(), k.max()))
+
     rs_DV, H, DA, F_AP = r.get_BAO(z, p).T
-    
     D = compute_growth_factor(block, P_lin, k, z, more_config)
 
     # Save growth rates and sigma_8
@@ -787,12 +763,10 @@ def save_matter_power(r, block, more_config):
     #block[names.growth_parameters, 'f_z'] = f
 
     block[names.cosmological_parameters, 'sigma_8'] = sigma_8
+    block[names.cosmological_parameters, 'S_8'] = sigma_8 * np.sqrt(p.omegam / 0.3)
 
-    block[names.cosmological_parameters, 'S_8'] = sigma_8*np.sqrt(p.omegam/0.3)
-    
     #omega_m = (p.ombh2+p.omch2)/(p.H0/100)**2 # use this because p.omegam has mass of neutrinos in it.
     #block[cosmo, 'omega_m'] = omega_m
-
 
 def save_cls(r, block):
 
@@ -834,7 +808,7 @@ def execute(block, config):
     
     if p.WantTransfer:
         with be_quiet_camb():
-            save_matter_power(r, block, more_config)
+            save_matter_power(r, block, config, more_config)
 
     if p.WantCls:
         with be_quiet_camb():
