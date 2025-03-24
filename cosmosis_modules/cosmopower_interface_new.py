@@ -278,9 +278,9 @@ def get_cosmopower_inputs(block, z, nz, config, more_config):
                 }
 
         elif more_config['sample_S8']:
-            check_range(block[cosmo, 'S_8_input'], 0.5, 1.0, "S_8_input")
+            check_range(block[cosmo, 's_8_input'], 0.5, 1.0, "S_8_input")
             params_lin = {
-                'S_8': [block[cosmo, 'S_8_input']] * nz,
+                'S_8': [block[cosmo, 's_8_input']] * nz,
                 'n_s': [block[cosmo, 'n_s']] * nz,
                 'h': [block[cosmo, 'h0']] * nz,
                 'omega_b': [block[cosmo, 'ombh2']] * nz,
@@ -303,11 +303,11 @@ def get_cosmopower_inputs(block, z, nz, config, more_config):
 
     elif version == 'mead2020_feedback':
         if more_config['sample_S8']:
-            check_range(block[cosmo, 'S_8_input'], 0.5, 1.0, "S_8_input")
+            check_range(block[cosmo, 's_8_input'], 0.5, 1.0, "S_8_input")
             if config['NonLinear'] != 'NonLinear_none':
                 check_range(block.get_double(names.halo_model_parameters, 'logT_AGN'), 7.3, 8.3, "logT_AGN")
             params_lin = {
-                'S8': [block[cosmo, 'S_8_input']] * nz,
+                'S8': [block[cosmo, 's_8_input']] * nz,
                 'n_s': [block[cosmo, 'n_s']] * nz,
                 'h': [block[cosmo, 'h0']] * nz,
                 'obh2': [block[cosmo, 'ombh2']] * nz,
@@ -316,7 +316,7 @@ def get_cosmopower_inputs(block, z, nz, config, more_config):
             }
             if config['NonLinear'] != 'NonLinear_none':
                 params_nonlin = {
-                    'S8': [block[cosmo, 'S_8_input']] * nz,
+                    'S8': [block[cosmo, 's_8_input']] * nz,
                     'n_s': [block[cosmo, 'n_s']] * nz,
                     'h': [block[cosmo, 'h0']] * nz,
                     'obh2': [block[cosmo, 'ombh2']] * nz,
