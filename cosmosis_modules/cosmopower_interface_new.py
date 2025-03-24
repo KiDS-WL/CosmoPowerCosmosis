@@ -189,6 +189,7 @@ def setup(options):
     more_config['kmax_extrapolate'] = options.get_double(opt, 'kmax_extrapolate', default=more_config['kmax'])
     more_config['nk'] = options.get_int(opt, 'nk', default=200)
     more_config['use_specific_k_modes'] = options.get_bool(opt, 'use_specific_k_modes', default=False)
+    more_config['sample_S8'] = options.get_bool(opt, 'sample_S8', default=True)
     
     # Create the object that connects to cosmopower
     # load pre-trained NN model: maps cosmological parameters to linear log-P(k)
@@ -254,7 +255,7 @@ def get_cosmopower_inputs(block, z, nz, config, more_config):
             check_range(block[cosmo, 'A'], 2, 4, "A")
             check_range(block[cosmo, 'eta'], 0.5, 1.0, "eta")
 
-        if block.has_value(cosmo, 'A_s') and not block.has_value(cosmo, 'S_8_input'):
+        if not more_config['sample_S8']:
             check_range(np.log(block[cosmo, 'A_s'] * 10**10), 1.61, 3.91, "A_s")
             params_lin = {
                 'ln10^{10}A_s': [np.log(block[cosmo, 'A_s'] * 10**10)] * nz,
@@ -276,7 +277,7 @@ def get_cosmopower_inputs(block, z, nz, config, more_config):
                     'eta_0': [block.get_double(names.halo_model_parameters, 'eta')] * nz
                 }
 
-        elif not block.has_value(cosmo, 'A_s') and block.has_value(cosmo, 'S_8_input'):
+        elif more_config['sample_S8']:
             check_range(block[cosmo, 'S_8_input'], 0.5, 1.0, "S_8_input")
             params_lin = {
                 'S_8': [block[cosmo, 'S_8_input']] * nz,
@@ -301,7 +302,7 @@ def get_cosmopower_inputs(block, z, nz, config, more_config):
                 }
 
     elif version == 'mead2020_feedback':
-        if not block.has_value(cosmo, 'sigma_8') and block.has_value(cosmo, 'S_8_input'):
+        if more_config['sample_S8']:
             check_range(block[cosmo, 'S_8_input'], 0.5, 1.0, "S_8_input")
             if config['NonLinear'] != 'NonLinear_none':
                 check_range(block.get_double(names.halo_model_parameters, 'logT_AGN'), 7.3, 8.3, "logT_AGN")
@@ -324,7 +325,7 @@ def get_cosmopower_inputs(block, z, nz, config, more_config):
                     'log_T_AGN': [block.get_double(names.halo_model_parameters, 'logT_AGN')] * nz
                 }
 
-        elif block.has_value(cosmo, 'sigma_8') and not block.has_value(cosmo, 'S_8_input'):
+        elif not more_config['sample_S8']:
             check_range(block[cosmo, 'sigma_8'], 0.39, 1.01, "sigma_8")
             if config['NonLinear'] != 'NonLinear_none':
                 check_range(block.get_double(names.halo_model_parameters, 'logT_AGN'), 6.5, 9.36, "logT_AGN")
