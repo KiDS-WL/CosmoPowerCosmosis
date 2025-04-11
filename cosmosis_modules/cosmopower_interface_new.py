@@ -4,7 +4,7 @@ import numpy as np
 import warnings
 import traceback
 import contextlib
-from scipy.interpolate import InterpolatedUnivariateSpline, RectBivariateSpline, CubicSpline
+from scipy.interpolate import InterpolatedUnivariateSpline, RectBivariateSpline, CubicSpline, UnivariateSpline
 
 # Finally we can now import camb
 import camb
@@ -661,7 +661,17 @@ def save_distances(r, block, more_config):
 def compute_growth_factor(block, P_tot, k, z, more_config):
     P_kmin = P_tot[:,0]
     D = np.sqrt(P_kmin / P_kmin[0]).squeeze()
-    return D
+    
+    logD = np.log(D)
+
+    a = 1.0/(1.0+z)
+    loga = np.log(a)
+
+    logD_spline = UnivariateSpline(loga[::-1], logD[::-1])
+    f_spline = logD_spline.derivative()
+    f = f_spline(loga)
+    
+    return D, f
 
 def window(k_mode):
     R = 8 # in units Mpc/h which is correct since k is in h/Mpc
@@ -749,7 +759,7 @@ def save_matter_power(r, block, config, more_config):
     sigma_8 = np.sqrt(sigma_sq_cs.integrate(k.min(), k.max()))
 
     rs_DV, H, DA, F_AP = r.get_BAO(z, p).T
-    D = compute_growth_factor(block, P_lin, k, z, more_config)
+    D, f = compute_growth_factor(block, P_lin, k, z, more_config)
 
     # Save growth rates and sigma_8
     block[names.growth_parameters, 'z'] = z
@@ -761,7 +771,7 @@ def save_matter_power(r, block, config, more_config):
     block[names.growth_parameters, 'DA'] = DA
     block[names.growth_parameters, 'F_AP'] = F_AP
     block[names.growth_parameters, 'd_z'] = D
-    #block[names.growth_parameters, 'f_z'] = f
+    block[names.growth_parameters, 'f_z'] = f
 
     block[names.cosmological_parameters, 'sigma_8'] = sigma_8
     block[names.cosmological_parameters, 'S_8'] = sigma_8 * np.sqrt(p.omegam / 0.3)
