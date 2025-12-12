@@ -46,10 +46,6 @@ def setup(options):
         'nk': options.get_int(option_section, 'nk', default=200),
         'use_specific_k_modes': options.get_bool(option_section, 'use_specific_k_modes', default=False),
     }
-
-    for _, key in options.keys(option_section):
-        if key.startswith('cosmopower_'):
-            config[key] = block[option_section, key]
     
     # Create the object that connects to cosmopower
     # load pre-trained NN model: maps cosmological parameters to linear log-P(k)
